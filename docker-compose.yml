@@ -1,0 +1,82 @@
+version: '3'
+services:
+  service:
+    container_name: ulog_service
+    build: ./ulog-backend
+    image: ulog_service:latest
+    environment:
+      - CONFIGOR_ENV=${CONFIGOR_ENV}
+    ports:
+      - "${SERVICE_PORT}:443"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ulog_net
+    healthcheck:
+      test: nc -z localhost ${SERVICE_PORT}
+      interval: 3s
+      timeout: 3s
+      retries: 3
+  postgres:
+    container_name: ulog_postgres
+#    restart: always
+    image: "postgres:latest"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./script/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASSWORD}
+      - POSTGRES_DB=${PG_DB}
+    ports:
+      - "${PG_PORT}:5432"
+    healthcheck:
+      test: pg_isready -q -d ${PG_DB} -U ${PG_USER}
+      interval: 3s
+      timeout: 3s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - ulog_net
+  redis:
+    container_name: ulog_redis
+    image: "redis:latest"
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: redis-cli --raw incr ping
+      interval: 3s
+      timeout: 3s
+      retries: 3
+    ports:
+      - "${REDIS_PORT}:6379"
+    command: ["redis-server","--requirepass","${REDIS_PASSWORD}"]
+    networks:
+      - ulog_net
+  frontend:
+    container_name: ulog_frontend
+    build: ./ulog-frontend
+    image: ulog_frontend:latest
+    ports:
+      - "${FRONTEND_PORT}:4173"
+    depends_on:
+      - service
+    networks:
+      - ulog_net
+    healthcheck:
+      test: curl -f http://localhost:${FRONTEND_PORT} || exit 1
+      interval: 3s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ulog_net:
