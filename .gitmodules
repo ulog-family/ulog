@@ -1,0 +1,6 @@
+[submodule "ulog-frontend"]
+	path = ulog-frontend
+	url = git@github.com:ulog-family/ulog-frontend.git
+[submodule "ulog-backend"]
+	path = ulog-backend
+	url = git@github.com:ulog-family/ulog-backend.git
